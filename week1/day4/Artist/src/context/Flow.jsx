@@ -83,31 +83,57 @@ function Provider(props) {
   );
   const createCollection = useCallback(
     async () => {
-        // TODO: Implement the createCollection transaction using "fcl.send".
-
-        /*
         const transactionId = await fcl
-          .send([])
-          .then(fcl.decode);
-        return fcl.tx(transactionId).onceSealed();
-        */
-      
-        return null;
+          .send([
+            fcl.transaction`
+            import LocalArtist from ${process.env.REACT_APP_ARTIST_CONTRACT_HOST_ACCOUNT}
+
+            transaction() {
+              prepare(account: AuthAccount) {
+                account.save<@LocalArtist.Collection>(
+                  <- LocalArtist.createCollection(),
+                  to: /storage/LocalArtistPictureCollection
+                )
+                account.link<&{LocalArtist.PictureReceiver}>(
+                  /public/LocalArtistPictureReceiver,
+                  target: /storage/LocalArtistPictureCollection
+                )
+              }
+            }
+            `,
+            // fcl.args([]),
+            fcl.payer(fcl.authz),
+            fcl.proposer(fcl.authz),
+            fcl.authorizations([fcl.authz]),
+            fcl.limit(9999)
+          ]).then(fcl.decode);
+        return fcl.tx(transactionId).onceSealed();      
     },
     []
   );
   const destroyCollection = useCallback(
     async () => {
-      // TODO: Implement the destroyCollection.cdc transaction using "fcl.send".
-
-      /*
       const transactionId = await fcl
-        .send([])
+        .send([
+          fcl.transaction`
+          import LocalArtist from ${process.env.REACT_APP_ARTIST_CONTRACT_HOST_ACCOUNT}
+          transaction() {
+            prepare(account: AuthAccount) {
+              account.unlink(/public/LocalArtistPictureReceiver)
+              let collection <- account.load<@LocalArtist.Collection>(
+                from: /storage/LocalArtistPictureCollection
+              )
+              destroy collection
+            }
+          }
+          `,
+          fcl.payer(fcl.authz),
+          fcl.proposer(fcl.authz),
+          fcl.authorizations([fcl.authz]),
+          fcl.limit(9999)
+        ])
         .then(fcl.decode);
       return fcl.tx(transactionId).onceSealed();
-      */
-
-      return null;
     },
     []
   );
@@ -128,11 +154,22 @@ function Provider(props) {
             ]);
           }
           
-          // TODO: Implement the getCollections.cdc script using "fcl.script", and
-          // the "args" in place for the script's arguments.
-          // Use the "fetchBalance" as an example.
-
-          const collection = [];
+          const collection = await fcl.send([fcl.script`
+            import LocalArtist from ${process.env.REACT_APP_ARTIST_CONTRACT_HOST_ACCOUNT}
+            pub fun main(address: Address): [LocalArtist.Canvas] {
+              let account = getAccount(address)
+              let pictureReceiverRef = account
+                .getCapability<&{LocalArtist.PictureReceiver}>(/public/LocalArtistPictureReceiver)
+                .borrow()
+                ?? panic("Couldn't borrow Picture Receiver reference.")
+            
+              return pictureReceiverRef.getCanvases()
+            }
+            `,
+            fcl.args([
+              fcl.arg(state.user.addr, FlowTypes.Address)
+              ])
+        ]).then(fcl.decode);
           const mappedCollection = collection.map(
             (serialized) => new Picture(
               serialized.pixels,
@@ -159,16 +196,43 @@ function Provider(props) {
   );
   const printPicture = useCallback(
     async (picture) => {
-      // TODO: Implement the print.cdc transcation using "fcl.send".
-      
-      /*
       const transactionId = await fcl
-        .send([])
+        .send([
+          fcl.transaction`
+          import LocalArtist from ${process.env.REACT_APP_ARTIST_CONTRACT_HOST_ACCOUNT}
+
+          transaction(width: Int, height: Int, pixels: String) {
+            
+            let picture: @LocalArtist.Picture?
+            let collectionRef: &{LocalArtist.PictureReceiver}
+
+            prepare(account: AuthAccount) {
+              let printerRef = getAccount(0x8916118bb9a0a12d)
+                .getCapability<&LocalArtist.Printer>(/public/LocalArtistPicturePrinter)
+                .borrow()
+                ?? panic("Couldn't borrow printer reference.")
+                
+              self.picture <- printerRef.print(
+                width: width,
+                height: height,
+                pixels: pixels
+              )
+              self.collectionRef = account
+                .getCapability<&{LocalArtist.PictureReceiver}>(/public/LocalArtistPictureReceiver)
+                .borrow()
+                ?? panic("Couldn't borrow picture receiver reference.")
+            }
+            execute {
+              if self.picture == nil {
+                destroy self.picture
+              } else {
+                self.collectionRef.deposit(picture: <- self.picture!)
+              }
+            }
+          }`
+        ])
         .then(fcl.decode);
       return fcl.tx(transactionId).onceSealed();
-      */
-
-      return null;
     },
     []
   );
@@ -177,20 +241,14 @@ function Provider(props) {
     dispatch({type: 'setUser', payload: user});
   };
   const logIn = () => {
-    // TODO: Implement FCL log in.
-    // TODO: Once implemented, remove the "setUser" call.
-    setUser({
-      loggedIn: true,
-      addr: '0xLocalArtist'
-    });
+    fcl.logIn(); // Log in or sign up if user doesn't have a wallet.
   };
   const logOut = () => {
-    // TODO: Implement FCL log out.
+    fcl.unauthenticate(); // Log out.    
   };
 
   useEffect(() => {
-    // TODO: Implement FCL subscription to get current user.
-    // TODO: Once implemented, remove the "setUser" call.
+    fcl.currentUser().subscribe(setUser);
     setUser({
       loggedIn: null
     });

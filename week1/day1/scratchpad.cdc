@@ -62,6 +62,44 @@ pub resource Picture {
     log(border)
   }
 
+
+  pub resource Printer {
+
+    pub let width: UInt8
+    pub let height: UInt8
+    pub let prints: {String: Canvas}
+
+    init(width: UInt8, height: UInt8) {
+      self.width = width;
+      self.height = height;
+      self.prints = {}
+    }
+
+    pub fun print(canvas: Canvas): @Picture? {
+      // Canvas needs to fit Printer's dimensions.
+      if canvas.pixels.length != Int(self.width * self.height) {
+        return nil
+      }
+
+      // Canvas can only use visible ASCII characters.
+      for symbol in canvas.pixels.utf8 {
+        if symbol < 32 || symbol > 126 {
+          return nil
+        }
+      }
+
+      // Printer is only allowed to print unique canvases.
+      if self.prints.containsKey(canvas.pixels) == false {
+        let picture <- create Picture(canvas: canvas)
+        self.prints[canvas.pixels] = canvas
+
+        return <- picture
+      } else {
+        return nil
+      }
+    }
+  }
+
 pub fun main() {
   let pixelsX = [
     "*   *",

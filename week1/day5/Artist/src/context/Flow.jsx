@@ -329,6 +329,20 @@ function Provider(props) {
 
           // TODO: Complete this transaction by calling LocalArtistMarket.withdraw().
           transaction(listingIndex: Int) {
+
+            let seller: Address
+            let marketRef: &{LocalArtistMarket.MarketInterface}
+
+            prepare(account: AuthAccount) {
+              self.seller = account.address
+              self.marketRef = getAccount(${process.env.REACT_APP_ARTIST_CONTRACT_HOST_ACCOUNT})
+                  .getCapability(/public/LocalArtistMarket)
+                  .borrow<&{LocalArtistMarket.MarketInterface}>()
+                  ?? panic("Couldn't borrow market reference.")
+            }
+            execute {
+              self.marketRef.withdraw(listingIndex: listingIndex, to: self.seller)
+            }
           }
         `,
         fcl.args([
@@ -353,8 +367,26 @@ function Provider(props) {
           import FungibleToken from 0x9a0766d93b6608b7
           import FlowToken from 0x7e60df042a9c0868
 
-          // TODO: Complete this transaction by calling LocalArtistMarket.buy().
           transaction(listingIndex: Int) {
+            let buyerAddress: Address
+            let funds: @FungibleToken.Vault
+            let marketRef: &{LocalArtistMarket.MarketInterface}
+            
+            prepare(account: AuthAccount) {
+              self.buyerAddress = account.address
+              self.marketRef = getAccount(${process.env.REACT_APP_ARTIST_CONTRACT_HOST_ACCOUNT})
+                .getCapability(/public/LocalArtistMarket)
+                .borrow<&{LocalArtistMarket.MarketInterface}>()
+                ?? panic("Couldn't borrow market reference.")
+              
+              let listings = self.marketRef.getListings()
+              let price = listings[listingIndex].price
+              self.funds <- account.borrow<&FlowToken.Vault{FungibleToken.Provider}>(from: /storage/flowTokenVault)!
+                .withdraw(amount: price)
+            }
+            execute {
+              self.marketRef.buy(listing: listingIndex, with: <- self.funds, buyer: self.buyerAddress)
+            }
           }
         `,
         fcl.args([

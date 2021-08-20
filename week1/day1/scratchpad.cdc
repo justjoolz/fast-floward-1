@@ -35,6 +35,33 @@ pub resource Picture {
   }
 }
 
+  pub fun display(canvas: Canvas) {
+    var border = "+"
+    var i = 0
+    while i < Int(canvas.width) {
+      border = border.concat("-")
+      i=i+1
+    }  
+    border = border.concat("+")
+
+    log(border)
+    
+    i=0
+    var lines : [String] = []
+    var cursor = 0
+    while i < Int(canvas.height) {
+      cursor = i * Int(canvas.height)
+      lines.append( "+"
+        .concat( canvas.pixels
+        .slice( from: cursor, upTo: cursor+Int(canvas.width))
+        ).concat("+") 
+      )
+      log(lines[i])
+      i=i+1
+    }
+    log(border)
+  }
+
 pub fun main() {
   let pixelsX = [
     "*   *",

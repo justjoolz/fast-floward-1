@@ -1,5 +1,3 @@
-// week1/day3/artist.cdc
-
 pub contract Artist {
   pub event PicturePrintSuccess(pixels: String)
   pub event PicturePrintFailure(pixels: String)
@@ -71,7 +69,8 @@ pub contract Artist {
     }
   }
 
-  pub fun display(canvas: Canvas) {
+  pub fun display(canvas: Canvas) : [String] {
+    
     var border = "+"
     var i = 0
     while i < Int(canvas.width) {
@@ -81,6 +80,8 @@ pub contract Artist {
     border = border.concat("+")
 
     log(border)
+    var formattedPicture : [String] = [border]
+
     
     i=0
     var lines : [String] = []
@@ -93,12 +94,15 @@ pub contract Artist {
         ).concat("+") 
       )
       log(lines[i])
+      formattedPicture.append( lines[i] )
       i=i+1
     }
     log(border)
+
+    formattedPicture.append(border)
+
+    return formattedPicture
   }
-
-
 
   pub resource interface Receiver {
     pub fun deposit(picture: @Picture)
@@ -107,7 +111,7 @@ pub contract Artist {
   pub resource interface Viewer {
     pub var pictures: @[Picture] 
     pub fun logPictures()
-    pub fun getPictures()
+    pub fun getPictures() : [String]?
     pub fun getTotalPictures() : Int
   }  
 
@@ -133,9 +137,11 @@ pub contract Artist {
     pub fun getPictures() : [String]? {
       if self.getTotalPictures() == 0 { return nil }
       var i=0
-      var pictures = [String]
+      var pictures : [String] = []
       while i < self.getTotalPictures() {
-        pictures.push(Artist.display(canvas: self.pictures[i].canvas))) 
+        // let picture = Artist.display(canvas: self.pictures[i].canvas)
+        let picture = self.pictures[i].canvas.pixels
+        pictures.append(picture)
         i=i+1   
       }
       return pictures

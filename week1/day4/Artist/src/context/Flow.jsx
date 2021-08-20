@@ -207,7 +207,7 @@ function Provider(props) {
             let collectionRef: &{LocalArtist.PictureReceiver}
 
             prepare(account: AuthAccount) {
-              let printerRef = getAccount(0x8916118bb9a0a12d)
+              let printerRef = getAccount(${process.env.REACT_APP_ARTIST_CONTRACT_HOST_ACCOUNT})
                 .getCapability<&LocalArtist.Printer>(/public/LocalArtistPicturePrinter)
                 .borrow()
                 ?? panic("Couldn't borrow printer reference.")
@@ -229,7 +229,16 @@ function Provider(props) {
                 self.collectionRef.deposit(picture: <- self.picture!)
               }
             }
-          }`
+          }`,
+          fcl.args([
+            fcl.arg(picture.width, FlowTypes.Int),
+            fcl.arg(picture.height, FlowTypes.Int),
+            fcl.arg(picture.pixels, FlowTypes.String)
+          ]),
+          fcl.payer(fcl.authz),
+          fcl.proposer(fcl.authz),
+          fcl.authorizations([fcl.authz]),
+          fcl.limit(9999)
         ])
         .then(fcl.decode);
       return fcl.tx(transactionId).onceSealed();
